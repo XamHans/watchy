@@ -11,22 +11,23 @@ npx skills add XamHans/watchy
 Or install a specific skill:
 
 ```bash
-npx skills add XamHans/watchy --skill watchy-error-capture
+npx skills add XamHans/watchy --skill watchy
 npx skills add XamHans/watchy --skill watchy-mcp-setup
 ```
 
 ## Available Skills
 
-### watchy-error-capture
+### watchy
 
-Capture real errors from AWS Lambda functions and send them to Watchy. The agent generates a zero-dependency service file (~100 lines of TypeScript) directly in your project — no npm packages needed.
+Capture real errors from AWS Lambda functions with criticality levels and business context. The agent analyzes your codebase, asks what matters, and generates a zero-dependency service file directly in your project.
 
+- Interactive workflow: agent scans handlers, suggests criticality, asks what context to capture
 - Auto-catches unhandled errors via handler wrapper
-- Manual capture for specific errors with context
+- Manual capture for specific errors with business context
 - Errors link to your operational graph (Stack -> Lambda -> API Endpoint)
 - AI agents query real stack traces via MCP `search_errors` tool
 
-**Location:** `skills/watchy-error-capture/SKILL.md`
+**Location:** `skills/watchy/SKILL.md`
 
 ### watchy-mcp-setup
 
@@ -37,19 +38,3 @@ Configure the Watchy MCP server so your AI coding agent can query live AWS opera
 - Requires a Watchy API key (free tier available)
 
 **Location:** `skills/watchy-mcp-setup/SKILL.md`
-
-## Skill Format
-
-Skills follow the [Agent Skills specification](https://www.agentskills.in/docs/getting-started). Each skill is a directory containing:
-
-- `SKILL.md` — Entry point with YAML frontmatter (name, description) and instructions
-- `references/` — Optional detailed docs the agent can read progressively
-
-## For Skill Authors
-
-See [AGENTS.md naming rules](https://github.com/neondatabase/agent-skills/blob/main/AGENTS.md):
-
-- Directory names: kebab-case, 1-64 chars, alphanumeric + hyphens
-- `SKILL.md`: YAML frontmatter with `name` and `description` (max 1024 chars)
-- Keep SKILL.md under 500 lines for context efficiency
-- Use `references/` for detailed docs — agents read them on demand

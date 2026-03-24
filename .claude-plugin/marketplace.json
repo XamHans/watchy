@@ -4,9 +4,9 @@
   "repository": "https://github.com/XamHans/watchy",
   "plugins": [
     {
-      "name": "watchy-error-capture",
-      "source": "skills/watchy-error-capture",
-      "description": "Capture Lambda errors and send them to Watchy for operational graph correlation and AI agent debugging",
+      "name": "watchy",
+      "source": "skills/watchy",
+      "description": "Capture Lambda errors with criticality and business context, query them via MCP for production-aware debugging",
       "category": "devops",
       "version": "1.0.0"
     },
