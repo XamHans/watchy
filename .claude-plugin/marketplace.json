@@ -1,7 +1,7 @@
 {
   "name": "watchy-agent-skills",
   "description": "Skills for integrating with Watchy — the AWS operational graph for serverless teams",
-  "repository": "https://github.com/watchy-dev/watchy",
+  "repository": "https://github.com/XamHans/watchy",
   "plugins": [
     {
       "name": "watchy-error-capture",

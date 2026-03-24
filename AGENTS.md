@@ -5,14 +5,14 @@ Skills for AI coding agents to integrate with [Watchy](https://watchy.dev) — t
 ## Install
 
 ```bash
-npx skills add watchy-dev/watchy
+npx skills add XamHans/watchy
 ```
 
 Or install a specific skill:
 
 ```bash
-npx skills add watchy-dev/watchy --skill watchy-error-capture
-npx skills add watchy-dev/watchy --skill watchy-mcp-setup
+npx skills add XamHans/watchy --skill watchy-error-capture
+npx skills add XamHans/watchy --skill watchy-mcp-setup
 ```
 
 ## Available Skills

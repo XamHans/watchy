@@ -5,20 +5,20 @@ Standalone distribution bundle for the public Watchy skills repository.
 Intended GitHub remote:
 
 ```bash
-https://github.com/watchy-dev/watchy
+https://github.com/XamHans/watchy
 ```
 
 ## Install
 
 ```bash
-npx skills add watchy-dev/watchy
+npx skills add XamHans/watchy
 ```
 
 Install a single skill:
 
 ```bash
-npx skills add watchy-dev/watchy --skill watchy-error-capture
-npx skills add watchy-dev/watchy --skill watchy-mcp-setup
+npx skills add XamHans/watchy --skill watchy-error-capture
+npx skills add XamHans/watchy --skill watchy-mcp-setup
 ```
 
 ## Contents
@@ -30,10 +30,10 @@ npx skills add watchy-dev/watchy --skill watchy-mcp-setup
 
 ## Publish
 
-Push the contents of this directory as the root of the public `watchy-dev/watchy` repository.
+Push the contents of this directory as the root of the public `XamHans/watchy` repository.
 
 Before publishing:
 
 1. Confirm the GitHub repository is public.
-2. Confirm anonymous clone works for `https://github.com/watchy-dev/watchy.git`.
+2. Confirm anonymous clone works for `https://github.com/XamHans/watchy.git`.
 3. Run `npx skills add . --list` from this directory.
