@@ -1,0 +1,21 @@
+{
+  "name": "watchy-agent-skills",
+  "description": "Skills for integrating with Watchy — the AWS operational graph for serverless teams",
+  "repository": "https://github.com/watchy-dev/watchy",
+  "plugins": [
+    {
+      "name": "watchy-error-capture",
+      "source": "skills/watchy-error-capture",
+      "description": "Capture Lambda errors and send them to Watchy for operational graph correlation and AI agent debugging",
+      "category": "devops",
+      "version": "1.0.0"
+    },
+    {
+      "name": "watchy-mcp-setup",
+      "source": "skills/watchy-mcp-setup",
+      "description": "Configure the Watchy MCP server so AI agents can query live AWS operational data",
+      "category": "devops",
+      "version": "1.0.0"
+    }
+  ]
+}

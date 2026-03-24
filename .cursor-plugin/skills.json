@@ -1,0 +1,16 @@
+{
+  "name": "watchy-agent-skills",
+  "description": "Skills for integrating with Watchy — the AWS operational graph for serverless teams",
+  "skills": [
+    {
+      "name": "watchy-error-capture",
+      "path": "skills/watchy-error-capture",
+      "description": "Capture Lambda errors and send them to Watchy"
+    },
+    {
+      "name": "watchy-mcp-setup",
+      "path": "skills/watchy-mcp-setup",
+      "description": "Configure the Watchy MCP server for AI agents"
+    }
+  ]
+}
