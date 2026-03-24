@@ -22,11 +22,14 @@ const MAX_MESSAGE_LENGTH = 1024;
 
 // ── Types ──
 
+type Criticality = 'low' | 'medium' | 'high' | 'critical';
+
 interface ErrorEvent {
   errorName: string;
   errorMessage: string;
   stackTrace?: string;
   level: 'error' | 'warning' | 'fatal';
+  criticality: Criticality;
   functionName: string;
   functionVersion?: string;
   awsAccountId: string;
@@ -41,6 +44,7 @@ interface ErrorEvent {
   release?: string;
   tags?: Record<string, string>;
   extra?: Record<string, unknown>;
+  context?: Record<string, unknown>;
   sdkVersion: string;
   timestamp: string;
 }
@@ -48,7 +52,18 @@ interface ErrorEvent {
 interface CaptureOptions {
   tags?: Record<string, string>;
   extra?: Record<string, unknown>;
+  /** Flexible context bag — pack in any business data useful for debugging */
+  context?: Record<string, unknown>;
   level?: 'error' | 'warning' | 'fatal';
+  /** Business criticality: low, medium, high, critical */
+  criticality?: Criticality;
+}
+
+interface WrapOptions {
+  /** Default criticality for all errors from this handler */
+  criticality?: Criticality;
+  /** Extract business context from the event for every error in this handler */
+  contextExtractor?: (event: unknown) => Record<string, unknown>;
 }
 
 type LambdaContext = {
@@ -70,7 +85,6 @@ const queue: ErrorEvent[] = [];
 // ── Lambda Context Extraction ──
 
 function parseArn(arn: string): { accountId: string; region: string } {
-  // arn:aws:lambda:us-east-1:123456789012:function:myFunction
   const parts = arn.split(':');
   return {
     region: parts[3] || process.env.AWS_REGION || 'unknown',
@@ -78,7 +92,7 @@ function parseArn(arn: string): { accountId: string; region: string } {
   };
 }
 
-function extractContext(context: LambdaContext) {
+function extractLambdaContext(context: LambdaContext) {
   const { accountId, region } = parseArn(context.invokedFunctionArn);
   const coldStart = isFirstInvocation;
   isFirstInvocation = false;
@@ -104,19 +118,21 @@ function serializeError(
   options: CaptureOptions = {},
 ): ErrorEvent {
   const error = err instanceof Error ? err : new Error(String(err));
-  const ctx = extractContext(context);
+  const ctx = extractLambdaContext(context);
 
   return {
     errorName: error.name || 'Error',
     errorMessage: (error.message || String(err)).slice(0, MAX_MESSAGE_LENGTH),
     stackTrace: error.stack?.slice(0, MAX_STACK_LENGTH),
     level: options.level || 'error',
+    criticality: options.criticality || 'medium',
     ...ctx,
     remainingMs: context.getRemainingTimeInMillis?.(),
     environment: process.env.WATCHY_ENVIRONMENT || process.env.NODE_ENV,
     release: process.env.WATCHY_RELEASE,
     tags: options.tags,
     extra: options.extra,
+    context: options.context,
     sdkVersion: 'skill-1.0',
     timestamp: new Date().toISOString(),
   };
@@ -137,29 +153,23 @@ async function flush(): Promise<void> {
         Authorization: `Bearer ${WATCHY_API_KEY}`,
       },
       body: JSON.stringify({ events: batch }),
-      // keepalive allows the request to complete after Lambda freezes
       keepalive: true,
-    }).catch(() => {
-      // Silently drop — never block Lambda execution
-    });
+    }).catch(() => {});
   } catch {
-    // Silently drop
+    // Silently drop — never block Lambda execution
   }
 }
 
 // ── Public API ──
 
 /**
- * Manually capture an error with optional context.
- * Call this inside catch blocks for errors you want to track.
+ * Manually capture an error with criticality and business context.
  *
  * @example
- * try {
- *   await riskyOperation();
- * } catch (err) {
- *   captureError(err, context, { tags: { orderId: '123' } });
- *   throw err;
- * }
+ * captureError(err, context, {
+ *   criticality: 'critical',
+ *   context: { orderId: '123', userId: 'abc', amount: 99.99 },
+ * });
  */
 export function captureError(
   err: unknown,
@@ -167,7 +177,6 @@ export function captureError(
   options: CaptureOptions = {},
 ): void {
   queue.push(serializeError(err, context, options));
-
   if (queue.length >= MAX_BATCH_SIZE) {
     flush();
   }
@@ -175,88 +184,132 @@ export function captureError(
 
 /**
  * Wrap a Lambda handler to automatically capture unhandled errors.
- * Flushes the error queue after each invocation.
+ * Supports default criticality and automatic context extraction from the event.
  *
  * @example
  * export const handler = wrapHandler(async (event, context) => {
  *   return { statusCode: 200, body: 'ok' };
+ * }, {
+ *   criticality: 'critical',
+ *   contextExtractor: (event) => ({ orderId: event.body?.orderId }),
  * });
  */
 export function wrapHandler<TEvent = unknown, TResult = unknown>(
   handler: (event: TEvent, context: LambdaContext) => Promise<TResult>,
+  options: WrapOptions = {},
 ): (event: TEvent, context: LambdaContext) => Promise<TResult> {
   return async (event: TEvent, context: LambdaContext): Promise<TResult> => {
     try {
       const result = await handler(event, context);
       return result;
     } catch (err) {
-      captureError(err, context, { level: 'error' });
+      const extractedContext = options.contextExtractor
+        ? safeExtract(options.contextExtractor, event)
+        : undefined;
+
+      captureError(err, context, {
+        level: 'error',
+        criticality: options.criticality,
+        context: extractedContext,
+      });
       throw err;
     } finally {
       await flush();
     }
   };
 }
+
+function safeExtract(
+  extractor: (event: unknown) => Record<string, unknown>,
+  event: unknown,
+): Record<string, unknown> | undefined {
+  try {
+    return extractor(event);
+  } catch {
+    return undefined;
+  }
+}
 ```
 
 ## Integration Patterns
 
-### Pattern 1: Wrap all handlers (recommended)
-
-Wrap every exported handler. Unhandled errors are automatically captured.
+### Pattern 1: Wrapper with criticality + context extraction (recommended)
 
 ```typescript
 import { wrapHandler } from './lib/watchy';
 
 export const handler = wrapHandler(async (event, context) => {
-  const result = await processOrder(event.body);
-  return { statusCode: 200, body: JSON.stringify(result) };
+  const order = await createOrder(JSON.parse(event.body));
+  return { statusCode: 200, body: JSON.stringify(order) };
+}, {
+  criticality: 'critical',
+  contextExtractor: (event: any) => ({
+    userId: event.requestContext?.authorizer?.userId,
+    path: event.path,
+  }),
 });
 ```
 
-### Pattern 2: Manual capture for specific errors
-
-Use `captureError` when you catch errors but want to track them without crashing.
+### Pattern 2: Manual capture with business context
 
 ```typescript
 import { captureError } from './lib/watchy';
 
-export const handler = async (event: APIGatewayEvent, context: Context) => {
+export const handler = async (event, context) => {
+  const body = JSON.parse(event.body);
   try {
-    await sendEmail(event.body);
-    return { statusCode: 200, body: 'sent' };
+    await processPayment(body);
+    return { statusCode: 200, body: 'ok' };
   } catch (err) {
     captureError(err, context, {
-      level: 'warning',
-      tags: { operation: 'send-email', recipient: event.body.to },
+      criticality: 'critical',
+      context: {
+        orderId: body.orderId,
+        userId: body.userId,
+        amount: body.amount,
+        currency: body.currency,
+      },
     });
-    // Don't re-throw — return graceful error response
-    return { statusCode: 500, body: 'Email send failed' };
+    throw err;
   }
 };
 ```
 
-### Pattern 3: Combine wrapper + manual capture
-
-Use the wrapper for unhandled errors, plus manual capture for expected errors you handle gracefully.
+### Pattern 3: Different criticality per catch block
 
 ```typescript
 import { wrapHandler, captureError } from './lib/watchy';
 
 export const handler = wrapHandler(async (event, context) => {
-  // This error is manually captured but handled gracefully
-  let user;
+  // Cache miss — low criticality, retryable
+  let config;
   try {
-    user = await fetchUser(event.userId);
+    config = await getFromCache('app-config');
   } catch (err) {
-    captureError(err, context, { level: 'warning', tags: { userId: event.userId } });
-    user = getDefaultUser();
+    captureError(err, context, {
+      criticality: 'low',
+      context: { cacheKey: 'app-config', fallback: 'defaults' },
+    });
+    config = getDefaults();
   }
 
-  // This unhandled error is auto-captured by the wrapper
-  const result = await processForUser(user);
-  return { statusCode: 200, body: JSON.stringify(result) };
-});
+  // Payment — critical, revenue impact
+  try {
+    await chargeCustomer(event.body, config);
+  } catch (err) {
+    captureError(err, context, {
+      criticality: 'critical',
+      context: {
+        orderId: event.body.orderId,
+        amount: event.body.amount,
+        configSource: config._source,
+      },
+    });
+    throw err;
+  }
+
+  return { statusCode: 200, body: 'charged' };
+}, { criticality: 'high' }); // default for unhandled errors
 ```
 
 ## Environment Variables
@@ -279,3 +332,6 @@ When generating the service file:
 5. **Existing error handling**: If the user already has try/catch blocks, add `captureError` calls inside existing catch blocks rather than replacing their error handling.
 6. **Re-throw**: When using `captureError` in a catch block before `wrapHandler`, always re-throw unless the user explicitly wants to swallow the error.
 7. **Cold start tracking**: The `isFirstInvocation` flag is module-level and persists across warm invocations — this is correct Lambda behavior.
+8. **Criticality is about business impact**, not error frequency. A rare payment failure is `critical`; a frequent cache miss is `low`.
+9. **Context should contain business data**, not technical Lambda details (those are auto-captured). Focus on: IDs, amounts, user info, operation names.
+10. **The `contextExtractor` in `wrapHandler`** is wrapped in try/catch — it won't crash the handler if extraction fails.

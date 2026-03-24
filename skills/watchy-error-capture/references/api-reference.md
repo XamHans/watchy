@@ -32,6 +32,7 @@ Authorization: Bearer wky_xxxxxxxxxxxx
       "errorMessage": "Cannot read property 'items' of undefined",
       "stackTrace": "TypeError: Cannot read property...\n    at handler (index.ts:47)\n    ...",
       "level": "error",
+      "criticality": "critical",
       "functionName": "processOrder",
       "functionVersion": "$LATEST",
       "awsAccountId": "123456789012",
@@ -46,6 +47,7 @@ Authorization: Bearer wky_xxxxxxxxxxxx
       "release": "v2.3.1",
       "tags": { "orderId": "ord-789" },
       "extra": { "userId": "user-456" },
+      "context": { "orderId": "ord-789", "userId": "user-456", "amount": 99.99, "currency": "USD" },
       "fingerprint": "optional-custom-fingerprint",
       "sdkVersion": "skill-1.0",
       "timestamp": "2026-03-24T14:30:00.000Z"
@@ -62,6 +64,7 @@ Authorization: Bearer wky_xxxxxxxxxxxx
 | `errorMessage` | string | yes | 1024 | Error message text |
 | `stackTrace` | string | no | 8192 | Full stack trace |
 | `level` | enum | no | - | `error` (default), `warning`, or `fatal` |
+| `criticality` | enum | no | - | `low`, `medium` (default), `high`, or `critical` |
 | `functionName` | string | yes | 256 | Lambda function name |
 | `functionVersion` | string | no | 64 | Lambda function version |
 | `awsAccountId` | string | yes | 20 | AWS account ID (12 digits) |
@@ -75,7 +78,8 @@ Authorization: Bearer wky_xxxxxxxxxxxx
 | `environment` | string | no | 64 | Deployment environment (`production`, `staging`) |
 | `release` | string | no | 128 | Release/version tag |
 | `tags` | object | no | - | Key-value string pairs for filtering |
-| `extra` | object | no | - | Arbitrary context data |
+| `extra` | object | no | - | Arbitrary context data (legacy — prefer `context`) |
+| `context` | object | no | 16KB | Flexible context bag — business data, user info, anything useful for debugging |
 | `fingerprint` | string | no | 64 | Custom dedup key. If omitted, auto-computed from errorName + top 3 stack frames |
 | `sdkVersion` | string | no | 32 | Client version identifier |
 | `timestamp` | string | yes | - | ISO 8601 datetime when the error occurred |

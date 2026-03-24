@@ -13,16 +13,20 @@ description: >-
 
 Send real errors from AWS Lambda functions to Watchy. Errors are linked to your operational graph (Stack -> Lambda -> API Endpoint) and queryable by AI agents via MCP.
 
-**No npm packages required.** You generate a small service file (~100 lines) that uses plain `fetch()` to send errors to Watchy's ingestion API.
+**No npm packages required.** You generate a small service file (~120 lines) that uses plain `fetch()` to send errors to Watchy's ingestion API.
+
+## How to Use This Skill (Agent Workflow)
+
+**Do NOT just generate code immediately.** Follow this interactive workflow to help the developer capture the right errors with the right context and criticality.
+
+Link: references/agent-workflow.md
 
 ## What This Does
 
-1. Catches unhandled errors from Lambda handlers (wrapper mode)
-2. Lets you manually capture specific errors with context (manual mode)
-3. Auto-detects Lambda context: functionName, requestId, region, accountId, logGroup
-4. Batches and flushes errors asynchronously (non-blocking)
-5. Errors appear in Watchy's UI linked to the Lambda resource in your operational graph
-6. AI agents can query real stack traces via Watchy's MCP `search_errors` tool
+1. **Analyzes the codebase** — finds Lambda handlers, error-prone patterns, business-critical code
+2. **Asks the developer** — suggests criticality levels and what context to capture per handler
+3. **Generates tailored code** — service file + per-handler capture with criticality and business context
+4. Errors appear in Watchy linked to the operational graph, queryable by AI agents via MCP
 
 ## Prerequisites
 
@@ -30,65 +34,40 @@ Send real errors from AWS Lambda functions to Watchy. Errors are linked to your 
 - A Watchy API key with `write:errors` scope (Settings -> API Keys)
 - `WATCHY_API_KEY` environment variable set on your Lambda functions
 
-## Quick Start
+## Criticality Levels
 
-### Step 1: Generate the Watchy service file
+Every captured error has a criticality level that determines how it's prioritized in Watchy:
 
-Create a file at `lib/watchy.ts` (or `src/lib/watchy.ts`, adapt to project structure) using the patterns in the reference below.
+| Level | When to use | Examples |
+|---|---|---|
+| `critical` | Revenue impact, data loss, security breach | Payment processing, data mutations, auth failures |
+| `high` | User-facing failures, SLA violations | API responses, form submissions, file uploads |
+| `medium` | Degraded experience, retryable failures | Cache misses, slow queries, partial feature failure |
+| `low` | Background tasks, non-blocking operations | Analytics, notifications, cleanup jobs |
 
-Link: references/lambda-patterns.md
+## Context — The Flexible Bag
 
-### Step 2: Add the environment variable
+Every error can carry a `context` object — a free-form JSON bag where you pack whatever makes debugging useful. The agent should suggest context fields based on what the handler does.
 
-Add `WATCHY_API_KEY` to your Lambda environment variables. The value is the API key from Watchy Settings -> API Keys (must have `write:errors` scope).
-
-For SAM/CloudFormation:
-```yaml
-Environment:
-  Variables:
-    WATCHY_API_KEY: !Ref WatchyApiKeyParameter
-```
-
-For CDK:
+Examples:
 ```typescript
-fn.addEnvironment('WATCHY_API_KEY', watchyApiKey);
-```
-
-For Serverless Framework:
-```yaml
-provider:
-  environment:
-    WATCHY_API_KEY: ${ssm:/watchy/api-key}
-```
-
-### Step 3: Wrap your handlers
-
-```typescript
-import { wrapHandler, captureError } from './lib/watchy';
-
-// Auto-catch: wraps the handler, catches unhandled errors
-export const handler = wrapHandler(async (event, context) => {
-  // your existing code
-  return { statusCode: 200, body: 'ok' };
+// Payment handler
+captureError(err, ctx, {
+  criticality: 'critical',
+  context: { orderId, userId, amount, currency, paymentProvider: 'stripe' }
 });
-```
 
-Or use manual capture for specific errors:
+// User auth handler
+captureError(err, ctx, {
+  criticality: 'high',
+  context: { userId, authMethod: 'oauth', provider: 'google', ip: event.requestContext.identity.sourceIp }
+});
 
-```typescript
-import { captureError } from './lib/watchy';
-
-export const handler = async (event, context) => {
-  try {
-    await processOrder(event);
-  } catch (err) {
-    captureError(err, context, {
-      tags: { orderId: event.orderId },
-      level: 'fatal',
-    });
-    throw err; // re-throw so Lambda still reports failure
-  }
-};
+// Background sync job
+captureError(err, ctx, {
+  criticality: 'low',
+  context: { batchId, processedCount: 47, totalCount: 100, retryable: true }
+});
 ```
 
 ## API Reference
@@ -99,15 +78,6 @@ Link: references/api-reference.md
 
 ## Code Patterns
 
-Complete generated service file with all patterns (wrapper, manual capture, batch queue, flush).
+Complete generated service file with all patterns (wrapper, manual capture, criticality, context).
 
 Link: references/lambda-patterns.md
-
-## How It Works
-
-1. The generated service file queues errors in memory during handler execution
-2. On handler completion (or error), it flushes the batch to `POST https://app.watchy.dev/api/v1/errors`
-3. Uses `fetch()` with `keepalive: true` so the request completes even after Lambda freezes
-4. Watchy links the error to the Lambda resource in your operational graph by matching `functionName` + `awsAccountId`
-5. Errors are grouped by fingerprint (errorName + top stack frames) for deduplication
-6. AI agents query errors via the MCP `search_errors` tool — getting real stack traces, not just metric counts
