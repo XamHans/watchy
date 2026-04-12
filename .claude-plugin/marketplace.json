@@ -9,6 +9,13 @@
       "description": "Capture Lambda errors with criticality and business context, query them via REST API for production-aware debugging",
       "category": "devops",
       "version": "1.0.0"
+    },
+    {
+      "name": "watchy-debug",
+      "source": "skills/watchy-debug",
+      "description": "Investigate AWS Lambda production errors with a senior debugger's playbook — resource graph, CloudWatch logs, git history, CloudTrail deployments, root cause analysis",
+      "category": "devops",
+      "version": "1.0.0"
     }
   ]
 }

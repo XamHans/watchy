@@ -6,6 +6,11 @@
       "name": "watchy",
       "path": "skills/watchy",
       "description": "Capture Lambda errors with criticality and context, query via REST API"
+    },
+    {
+      "name": "watchy-debug",
+      "path": "skills/watchy-debug",
+      "description": "Investigate Lambda errors with resource graph, CloudWatch logs, git history, and root cause analysis"
     }
   ]
 }

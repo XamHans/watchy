@@ -17,7 +17,11 @@ npx skills add XamHans/watchy
 Install a single skill:
 
 ```bash
+# Error capture setup (generates Lambda integration code)
 npx skills add XamHans/watchy --skill watchy
+
+# Error investigation playbook (debug production errors with AI agent)
+npx skills add XamHans/watchy --skill watchy-debug
 ```
 
 ## Contents
