@@ -17,8 +17,7 @@ npx skills add XamHans/watchy
 Install a single skill:
 
 ```bash
-npx skills add XamHans/watchy --skill watchy-error-capture
-npx skills add XamHans/watchy --skill watchy-mcp-setup
+npx skills add XamHans/watchy --skill watchy
 ```
 
 ## Contents

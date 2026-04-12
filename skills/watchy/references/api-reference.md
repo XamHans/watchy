@@ -17,7 +17,7 @@ Ingest a batch of error events from Lambda functions.
 ### Request
 
 ```
-POST https://app.watchy.dev/api/v1/errors
+POST https://watchy.dev/api/v1/errors
 Content-Type: application/json
 Authorization: Bearer wky_xxxxxxxxxxxx
 ```

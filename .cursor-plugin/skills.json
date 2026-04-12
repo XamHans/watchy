@@ -5,12 +5,7 @@
     {
       "name": "watchy",
       "path": "skills/watchy",
-      "description": "Capture Lambda errors with criticality and context, query via MCP"
-    },
-    {
-      "name": "watchy-mcp-setup",
-      "path": "skills/watchy-mcp-setup",
-      "description": "Configure the Watchy MCP server for AI agents"
+      "description": "Capture Lambda errors with criticality and context, query via REST API"
     }
   ]
 }
